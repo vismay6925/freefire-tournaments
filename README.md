@@ -1,39 +1,17 @@
 # Free Fire Tournaments
 
-Tournament registration site with UPI payment verification.
+Live on Vercel: https://freefire-tournaments-t4t3.vercel.app
 
-## Admin login
+## Admin
+- Email: `shashank@freefire.com`
+- Password: `VISMAY07`
+- Path: `/admin/login`
 
-| Field | Value |
-|-------|--------|
-| **Email** | `shashank@freefire.com` |
-| **Password** | `VISMAY07` |
-| **URL** | `/admin/login` |
+## Payment
+- UPI: `8660267306@axl`
+- Payee: `VISMAY CM`
+- Path: `/payment`
 
-The admin account is created automatically on first app start (from `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars).
-
-## Payment (UPI)
-
-| Field | Value |
-|-------|--------|
-| **UPI ID** | `8660267306@axl` |
-| **Payee** | `VISMAY CM` |
-| **QR** | `app/static/images/upi_qr.jpeg` |
-
-## Local run
-
-```bash
-pip install -r requirements.txt
-python run.py
-```
-
-Open http://127.0.0.1:5000
-
-## Vercel
-
-1. Import this repo on [vercel.com/new](https://vercel.com/new)
-2. Framework: Other / Flask
-3. Set env vars (see `.env.example`): `SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `UPI_ID`, `UPI_NAME`, and **Postgres** `DATABASE_URL`
-4. Deploy
-
-SQLite does not work on Vercel — use Neon/Supabase Postgres.
+## Note
+The Vercel entrypoint is `api/index.py` (Python serverless handler).
+Full Flask app source is under `freefire-tournaments-full/` for local development.
