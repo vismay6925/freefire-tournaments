@@ -27,9 +27,15 @@ img.qr{{width:220px;background:#fff;padding:8px;border-radius:12px}}
 </style></head><body><div class="wrap">{body}</div></body></html>"""
 
 
-def normalize_path(raw_path: str) -> str:
-    path = urlparse(raw_path).path or "/"
-    # Vercel may pass /api or /api/index for rewritten requests
+def resolve_path(raw: str) -> str:
+    parsed = urlparse(raw)
+    qs = parse_qs(parsed.query)
+    if "path" in qs and qs["path"]:
+        p = qs["path"][0]
+        if not p.startswith("/"):
+            p = "/" + p
+        return p if p != "/" else "/"
+    path = parsed.path or "/"
     if path in ("/api", "/api/", "/api/index", "/api/index.py"):
         return "/"
     if path.startswith("/api/"):
@@ -39,42 +45,48 @@ def normalize_path(raw_path: str) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
-    def _send(self, code, body, content_type="text/html; charset=utf-8"):
+    def _send(self, code, body):
         data = body.encode("utf-8")
         self.send_response(code)
-        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
 
     def do_GET(self):
-        path = normalize_path(self.path)
-        if path == "/":
-            body = page(
-                "Home",
-                """
+        path = resolve_path(self.path)
+        if path in ("/", ""):
+            return self._send(
+                200,
+                page(
+                    "Home",
+                    """
                 <div class="card"><h1>Free Fire Tournaments</h1>
                 <p>Site is live on Vercel.</p>
                 <p><a href="/payment">Payment / UPI QR</a> · <a href="/admin/login">Admin Login</a></p></div>
                 """,
+                ),
             )
-            return self._send(200, body)
         if path == "/payment":
-            body = page(
-                "Payment",
-                f"""
+            return self._send(
+                200,
+                page(
+                    "Payment",
+                    f"""
                 <div class="card"><h1>Payment Information</h1>
                 <p><b>Payee:</b> {html.escape(UPI_NAME)}</p>
                 <p><b>UPI ID:</b> <code>{html.escape(UPI_ID)}</code></p>
                 <p><img class="qr" src="{QR}" alt="UPI QR"/></p>
                 <p><a href="/">Home</a></p></div>
                 """,
+                ),
             )
-            return self._send(200, body)
         if path == "/admin/login":
-            body = page(
-                "Admin Login",
-                f"""
+            return self._send(
+                200,
+                page(
+                    "Admin Login",
+                    f"""
                 <div class="card"><h1>Admin Login</h1>
                 <form method="POST" action="/admin/login">
                   <p>Email<br/><input name="email" value="{html.escape(ADMIN_EMAIL)}"/></p>
@@ -82,28 +94,31 @@ class handler(BaseHTTPRequestHandler):
                   <button type="submit">Login</button>
                 </form></div>
                 """,
+                ),
             )
-            return self._send(200, body)
         if path == "/admin":
-            body = page(
-                "Admin",
-                f"""
+            return self._send(
+                200,
+                page(
+                    "Admin",
+                    f"""
                 <div class="card"><h1>Admin Dashboard</h1>
                 <p>Login: <code>{html.escape(ADMIN_EMAIL)}</code> / <code>{html.escape(ADMIN_PASSWORD)}</code></p>
                 <p>UPI <code>{html.escape(UPI_ID)}</code> · {html.escape(UPI_NAME)}</p>
                 <p><a href="/">Home</a></p></div>
                 """,
+                ),
             )
-            return self._send(200, body)
-        # debug unknown paths
-        body = page(
-            "Not found",
-            f"<div class='card'><h1>404</h1><p>path={html.escape(path)}</p><p>raw={html.escape(self.path)}</p><a href='/'>Home</a></div>",
+        return self._send(
+            404,
+            page(
+                "Not found",
+                f"<div class='card'><h1>404</h1><p>{html.escape(path)}</p><a href='/'>Home</a></div>",
+            ),
         )
-        return self._send(404, body)
 
     def do_POST(self):
-        path = normalize_path(self.path)
+        path = resolve_path(self.path)
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length).decode("utf-8", errors="ignore")
         form = parse_qs(raw)
@@ -115,9 +130,11 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header("Location", "/admin")
                 self.end_headers()
                 return
-            body = page(
-                "Admin Login",
-                f"""
+            return self._send(
+                200,
+                page(
+                    "Admin Login",
+                    f"""
                 <div class="card"><h1>Admin Login</h1>
                 <p style="color:#f87171">Invalid email or password.</p>
                 <form method="POST" action="/admin/login">
@@ -126,6 +143,6 @@ class handler(BaseHTTPRequestHandler):
                   <button type="submit">Login</button>
                 </form></div>
                 """,
+                ),
             )
-            return self._send(200, body)
         return self._send(404, page("Not found", "<div class='card'><h1>404</h1></div>"))
