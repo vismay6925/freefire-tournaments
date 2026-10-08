@@ -35,5 +35,9 @@ class Config:
     UPI_ID = os.getenv("UPI_ID", "8660267306@axl")
     UPI_NAME = os.getenv("UPI_NAME", "VISMAY CM")
 
+    # Default admin (created on first boot if missing; password refreshed from env)
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "shashank@freefire.com")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "VISMAY07")
+
     RATELIMIT_DEFAULT = "200 per minute"
     RATELIMIT_STORAGE_URI = "memory://"
