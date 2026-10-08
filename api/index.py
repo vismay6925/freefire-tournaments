@@ -27,6 +27,17 @@ img.qr{{width:220px;background:#fff;padding:8px;border-radius:12px}}
 </style></head><body><div class="wrap">{body}</div></body></html>"""
 
 
+def normalize_path(raw_path: str) -> str:
+    path = urlparse(raw_path).path or "/"
+    # Vercel may pass /api or /api/index for rewritten requests
+    if path in ("/api", "/api/", "/api/index", "/api/index.py"):
+        return "/"
+    if path.startswith("/api/"):
+        rest = path[len("/api") :]
+        return rest if rest else "/"
+    return path
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, code, body, content_type="text/html; charset=utf-8"):
         data = body.encode("utf-8")
@@ -37,8 +48,8 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        path = urlparse(self.path).path
-        if path in ("/", ""):
+        path = normalize_path(self.path)
+        if path == "/":
             body = page(
                 "Home",
                 """
@@ -78,16 +89,21 @@ class handler(BaseHTTPRequestHandler):
                 "Admin",
                 f"""
                 <div class="card"><h1>Admin Dashboard</h1>
-                <p>Use email <code>{html.escape(ADMIN_EMAIL)}</code> / password <code>{html.escape(ADMIN_PASSWORD)}</code>.</p>
+                <p>Login: <code>{html.escape(ADMIN_EMAIL)}</code> / <code>{html.escape(ADMIN_PASSWORD)}</code></p>
                 <p>UPI <code>{html.escape(UPI_ID)}</code> · {html.escape(UPI_NAME)}</p>
                 <p><a href="/">Home</a></p></div>
                 """,
             )
             return self._send(200, body)
-        return self._send(404, page("Not found", "<div class='card'><h1>404</h1><a href='/'>Home</a></div>"))
+        # debug unknown paths
+        body = page(
+            "Not found",
+            f"<div class='card'><h1>404</h1><p>path={html.escape(path)}</p><p>raw={html.escape(self.path)}</p><a href='/'>Home</a></div>",
+        )
+        return self._send(404, body)
 
     def do_POST(self):
-        path = urlparse(self.path).path
+        path = normalize_path(self.path)
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length).decode("utf-8", errors="ignore")
         form = parse_qs(raw)
